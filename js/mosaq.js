@@ -441,7 +441,7 @@ function updateTileImagesDiv(minimize) {
     	var tdnum = 7;
     	var sc = Math.min(window.innerWidth * 0.00015, window.innerHeight * 0.00015);
     	var sc = Math.min(window.innerWidth / cW, window.innerHeight / cH);
-        tilesDiv.innerHTML = "<b>Tile Images</b>" +
+    	tilesDiv.innerHTML = "<b>Tile Images  </b><span class='navSectionFooter'>" + Object.getOwnPropertyNames(TilesUsed).length + " of " + Object.getOwnPropertyNames(tileImages).length + " used.</span>" +
                                 "<img img id='navBarTilesMinimizeIco' class='navSectionIcoBtn' src='minimize.png' />" +
                                 "<img id='trashBinIco' class='navSectionIcoBtn' src='trashBin.png' />" +
                                 "<img img id='selectAllIco' class='navSectionIcoBtn' src='selectAll.png' /><br/>" +
@@ -527,21 +527,20 @@ function updateSettingsDiv(minimize) {
 
     var settingsDiv = document.getElementById("navBarSettingsDiv");
     if (minimize) {
-        settingsDiv.innerHTML = "<b>Tools</b><img img id='navBarSettingsMaximizeIco' class='navSectionIcoBtn' src='maximize.png' />";
+        settingsDiv.innerHTML = "<b>Settings</b><img img id='navBarSettingsMaximizeIco' class='navSectionIcoBtn' src='maximize.png' />";
         var maxBtn = document.getElementById('navBarSettingsMaximizeIco');
         maxBtn.style.display = "inline";
         maxBtn.onclick = function () { updateSettingsDiv(!navMinimizeFlags[2]); }
     }
     else
     {
-        settingsDiv.innerHTML = "<b>Tools</b>" +
+        settingsDiv.innerHTML = "<b>Settings</b>" +
                                 "<img img id='navBarSettingsMinimizeIco' class='navSectionIcoBtn' src='minimize.png' />" +
                                 "<br/><b>Mosaic Size: </b><input type='button' id='dimensionsBtn' value='" + cW + "x" + cH + "'><br/>" +
                                 "<b>Tile Divisions: </b><input type='button' id='divisionsBtn' value='" + divisions + "'><br/>" +
                                 "<b>Tile Samplings: </b><input type='button' id='samplingsBtn' value='" + tileColorSamplings+"x"+tileColorSamplings + "'><br/>" +
                                 "<img id='handIco' class='navToolsIcoBtn' src='hand.png' /><img id='tilePlusIco' class='navToolsIcoBtn' src='tilePlus.png' /><img id='tileMinusIco' class='navToolsIcoBtn' src='tileMinus.png' /><br/>" +
-                                "<input type='button' id='saveBtn' value='Save Mosaic'><br/>" +
-                                "<div id='tilesUsedFooter' class='navSectionFooter'>Tiles Used : " + Object.getOwnPropertyNames(TilesUsed).length + " of " + Object.getOwnPropertyNames(tileImages).length + "</div>";
+                                "<input type='button' id='saveBtn' value='Save Mosaic'><br/>";
         var minBtn = document.getElementById('navBarSettingsMinimizeIco');
         minBtn.style.display = "inline";
         minBtn.onclick = function () { updateSettingsDiv(!navMinimizeFlags[2]); mode = "view";}
