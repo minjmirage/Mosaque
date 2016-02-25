@@ -30,6 +30,7 @@ var canvasInvT = { aa: 1, ab: 0, ac: 0, ba: 0, bb: 1, bc: 0 };      // canvas in
 var cW = 1920;                                                      // mosaic base image width
 var cH = 1080;                                                      // mosaic base image height
 var divisions = 128;                                                //
+var tileColorSamplings = 1;
 var zoom = { offX: 0, offY: 0, scale: 1 };
 var baseImage = null;
 var tileImages = null;
@@ -373,15 +374,13 @@ function initMosaicNavInterractions()
 	        var csrPosn = canvasPosition(canvasMousePosn.x, canvasMousePosn.y);
 	        csrPosn.x = Math.floor(csrPosn.x / rtw);
 	        csrPosn.y = Math.floor(csrPosn.y / rth);
-            context.strokeStyle = "#00FFFF";
-            context.beginPath();
-            context.rect((csrPosn.x - brushRadius) * rtw, (csrPosn.y - brushRadius) * rth, (brushRadius * 2 + 1) * rtw, (brushRadius * 2 + 1) * rth);
-            context.stroke();
+	        context.fillStyle = "rgba(0, 0, 0, 0.5)";
+            context.fillRect((csrPosn.x - brushRadius) * rtw, (csrPosn.y - brushRadius) * rth, (brushRadius * 2 + 1) * rtw, (brushRadius * 2 + 1) * rth);
             var bRad = Math.floor(brushRadius);
-            context.strokeStyle = "#FF00FF";
-            context.beginPath();
-            context.rect((csrPosn.x - bRad) * rtw, (csrPosn.y - bRad) * rth, (bRad * 2 + 1) * rtw, (bRad * 2 + 1) * rth);
-            context.stroke();
+            //context.globalCompositeOperation = "lighter";
+            context.fillStyle = "rgba(200, 200, 200, 0.6)";
+            context.fillRect((csrPosn.x - bRad) * rtw, (csrPosn.y - bRad) * rth, (bRad * 2 + 1) * rtw, (bRad * 2 + 1) * rth);
+            //context.globalCompositeOperation = "source-over";
 	    }
 
 		return false;   // false -> do not remove from stepFns
@@ -537,8 +536,9 @@ function updateSettingsDiv(minimize) {
     {
         settingsDiv.innerHTML = "<b>Tools</b>" +
                                 "<img img id='navBarSettingsMinimizeIco' class='navSectionIcoBtn' src='minimize.png' />" +
-                                "<br/><b>Size: </b><input type='button' id='dimensionsBtn' value='" + cW + "x" + cH + "'><br/>" +
-                                "<b>Divisions: </b><input type='button' id='divisionsBtn' value='"+divisions+"'><br/>" +
+                                "<br/><b>Mosaic Size: </b><input type='button' id='dimensionsBtn' value='" + cW + "x" + cH + "'><br/>" +
+                                "<b>Tile Divisions: </b><input type='button' id='divisionsBtn' value='" + divisions + "'><br/>" +
+                                "<b>Tile Samplings: </b><input type='button' id='samplingsBtn' value='" + tileColorSamplings+"x"+tileColorSamplings + "'><br/>" +
                                 "<img id='handIco' class='navToolsIcoBtn' src='hand.png' /><img id='tilePlusIco' class='navToolsIcoBtn' src='tilePlus.png' /><img id='tileMinusIco' class='navToolsIcoBtn' src='tileMinus.png' /><br/>" +
                                 "<input type='button' id='saveBtn' value='Save Mosaic'><br/>" +
                                 "<div id='tilesUsedFooter' class='navSectionFooter'>Tiles Used : " + Object.getOwnPropertyNames(TilesUsed).length + " of " + Object.getOwnPropertyNames(tileImages).length + "</div>";
@@ -596,6 +596,25 @@ function updateSettingsDiv(minimize) {
                 divisions = Math.max(2, Math.min(256, numIn.value));
                 doMosaic(baseImage, tileImages);
             }
+        }
+        // ----- samplings button interractions -----------------------
+        var sampsBtn = document.getElementById('samplingsBtn');
+        document.getElementById('samplingsBtn').onclick = function () {
+            var radioSpan = document.createElement("span");
+            for (var i = 1; i < 6; i++) {
+                var radBtn = document.createElement("input");
+                radBtn.type = "radio";
+                radBtn.name = i + "x" + i;
+                if (i == tileColorSamplings) radBtn.checked = true;
+                radBtn.onclick = function()
+                {
+                    tileColorSamplings = parseInt(this.name.split("x")[0]);
+                    doMosaic(baseImage, tileImages);
+                }
+                radioSpan.appendChild(radBtn);
+            }
+            sampsBtn.parentNode.insertBefore(radioSpan, sampsBtn.nextSibling);
+            sampsBtn.style.display = "none";
         }
         // ----- allow canvas contents to be saved as local file 
         document.getElementById('saveBtn').onclick = function () {
@@ -680,7 +699,7 @@ function doMosaic(baseImg,tileImgs)
     baseImage = baseImg;
     tileImages = tileImgs;
     function draw() {
-        generateMosaic(1);  // generate new mosaic canvas
+        generateMosaic(tileColorSamplings);  // generate new mosaic canvas
         updateMosaicNav();
     }
     draw();
@@ -720,7 +739,7 @@ function generateTilesCols(TileImages, TilesUsed, w, numCols, margin)
 /**
 * returns a canvas object that is the mosaic of given base image
 */
-function generateMosaic(scale) 
+function generateMosaicO(scale) 
 {
     if (scale == null) scale = 1;
 
@@ -748,6 +767,8 @@ function generateMosaic(scale)
     if (imageKeys.length == 0)
     {
         mosaicCtx.drawImage(baseImage, 0, 0, baseImage.width, baseImage.height, 0, 0, mosaicCanvas.width, mosaicCanvas.height);
+        var revealCtx = revealCanvas.getContext("2d");
+        revealCtx.drawImage(baseImage, 0, 0, baseImage.width, baseImage.height, 0, 0, revealCanvas.width, revealCanvas.height);     // write reveal canvas with image data
         return;
     }
 
@@ -763,7 +784,7 @@ function generateMosaic(scale)
 
 
     // ----- find suitable image for region ------------------------------------------
-    var pixelCanvasColors = pixelCtx.getImageData(0,0, divisions, divisions).data;   // base image colors for every tile position
+    var pixelCanvasColors = pixelCtx.getImageData(0, 0, pixelCanvas.width, pixelCanvas.height).data;   // base image colors for every tile position
     for (var i = divisions * divisions - 1; i > -1; i--)
     {    
         var prevColorFitIdx = 0;
@@ -828,6 +849,146 @@ function generateMosaic(scale)
         destData[c] = destData[c--] + tintVal.r;
     }
     mosaicCtx.putImageData(destImgData, 0,0);      // rewrite destination with tinted image data
+    var revealCtx = revealCanvas.getContext("2d");
+    revealCtx.putImageData(destImgData, 0, 0);     // write reveal canvas with image data
+}//endfunction
+
+/**
+* returns a canvas object that is the mosaic of given base image
+*/
+function generateMosaic(sub) {
+
+    if (sub == null) sub = 1;
+
+    // ----- the mosaic result canvas -----------------------------------------------
+    mosaicCanvas.width = cW;
+    mosaicCanvas.height = cH;
+    revealCanvas.width = mosaicCanvas.width;
+    revealCanvas.height = mosaicCanvas.height;
+    var mosaicCtx = mosaicCanvas.getContext("2d");
+
+    // ----- determine tiles width height and nearest mip to use --------------------
+    var iw = cW / divisions;        // tile image width
+    var ih = cH / divisions;        // tile image height
+
+    // ----- determine representative tile colors of tile images --------------------
+    var imageKeys = Object.getOwnPropertyNames(tileImages);
+    var imageTiles = [];                  // array of suitable sized tiles to build mosaic with
+    var imageColorsData = [];             // array for the overall tint of the image for each tile
+    for (var k = imageKeys.length - 1; k > -1; k--) {
+        imageTiles.unshift(getBestSizeFitMip(tileImages[imageKeys[k]], iw, ih));
+        if (tileImages[imageKeys[k]]["mip" + sub + "x" + sub] == null)
+        {
+            var subCanv = document.createElement("canvas");
+            subCanv.width = sub;
+            subCanv.height = sub;
+            var sctx = subCanv.getContext("2d");
+            sctx.drawImage(tileImages[imageKeys[k]].image, 0, 0, subCanv.width, subCanv.height);
+            tileImages[imageKeys[k]]["mip" + sub + "x" + sub] = subCanv;
+        }
+        imageColorsData.unshift(tileImages[imageKeys[k]]["mip"+sub+"x"+sub].getContext("2d").getImageData(0, 0, sub, sub).data);
+    }
+
+    // ----- no tiles image chk -----------------------------------------------------
+    if (imageKeys.length == 0) {
+        mosaicCtx.drawImage(baseImage, 0, 0, baseImage.width, baseImage.height, 0, 0, mosaicCanvas.width, mosaicCanvas.height);
+        var revealCtx = revealCanvas.getContext("2d");
+        revealCtx.drawImage(baseImage, 0, 0, baseImage.width, baseImage.height, 0, 0, revealCanvas.width, revealCanvas.height);     // write reveal canvas with image data
+        return;
+    }
+
+    // ----- create base canvas to match colors with --------------------------------
+    var pixelCanvas = document.createElement("canvas");
+    pixelCanvas.width = divisions * sub;
+    pixelCanvas.height = divisions * sub;
+    var pixelCtx = pixelCanvas.getContext("2d");
+    pixelCtx.drawImage(baseImage, 0, 0, pixelCanvas.width, pixelCanvas.height);
+
+    TilesUsed = new Object();
+    var tintVals = [];
+
+    // ----- find suitable image for region ------------------------------------------
+    var pixelCanvasColors = pixelCtx.getImageData(0, 0, pixelCanvas.width, pixelCanvas.height).data;   // base image colors for every tile position
+    for (var i = divisions * divisions - 1; i > -1; i--) {      // for each tile position
+        var prevColorFitIdx = 0;
+        var prevColorDiff = Number.MAX_VALUE;
+        var bestColorFitIdx = 0;
+        var bestColorDiff = Number.MAX_VALUE;
+        var ix = i % divisions;
+        var iy = parseInt(i / divisions);
+
+        for (var k = imageKeys.length - 1; k > -1; k--) {       // for each tile
+            var tileColors = imageColorsData[k];
+            var diff = 0;
+            for (var x = 0; x < sub; x++)
+                for (var y = 0; y < sub; y++)
+                {
+                    var baseCIdx = ((iy*sub+y)*divisions*sub + ix*sub+x) * 4;
+                    var tidx = (y*sub + x) * 4;
+                    diff+= Math.abs(tileColors[tidx] - pixelCanvasColors[baseCIdx]) +
+                           Math.abs(tileColors[tidx + 1] - pixelCanvasColors[baseCIdx + 1]) +
+                           Math.abs(tileColors[tidx + 2] - pixelCanvasColors[baseCIdx + 2]) +
+                           Math.abs(tileColors[tidx + 3] - pixelCanvasColors[baseCIdx + 3]);
+                }
+           
+            if (bestColorDiff > diff) {
+                prevColorDiff = bestColorDiff;
+                prevColorFitIdx = bestColorFitIdx;
+                bestColorDiff = diff;
+                bestColorFitIdx = k;
+            }
+            else if (prevColorDiff > diff) {
+                prevColorDiff = diff;
+                prevColorFitIdx = k;
+            }
+        }
+
+        if (Math.random() < bestColorDiff / (bestColorDiff + prevColorDiff)) bestColorFitIdx = prevColorFitIdx;    // add some randomness in large color patches
+        var bestColorFitKey = imageKeys[bestColorFitIdx];
+
+        if (TilesUsed[bestColorFitKey] == null)
+            TilesUsed[bestColorFitKey] = 1;
+        else
+            TilesUsed[bestColorFitKey]++;
+
+        // ----- calculate image tint to better blend at position 
+        var tileColors = imageColorsData[bestColorFitIdx];
+        var tintVal = { r:0, g:0, b:0, a:0 };
+        for (var x = 0; x < sub; x++)
+            for (var y = 0; y < sub; y++) {
+                var baseCIdx = ((iy * sub + y) * divisions * sub + ix * sub + x) * 4;
+                var tidx = (y * sub + x) * 4;
+                tintVal.r += pixelCanvasColors[baseCIdx] - tileColors[tidx];
+                tintVal.g += pixelCanvasColors[baseCIdx + 1] - tileColors[tidx+1];
+                tintVal.b += pixelCanvasColors[baseCIdx + 2] - tileColors[tidx+2];
+                tintVal.a += pixelCanvasColors[baseCIdx + 3] - tileColors[tidx+3];
+            }
+        tintVal.r /= sub * sub;
+        tintVal.g /= sub * sub;
+        tintVal.b /= sub * sub;
+        tintVal.a /= sub * sub;
+        tintVals.unshift(tintVal);
+        mosaicCtx.drawImage(imageTiles[bestColorFitIdx], i % divisions * iw, parseInt(i / divisions) * ih, iw, ih);   // draw mosaic tile 
+    }
+
+    // ----- tint result canvas 
+    var w = mosaicCanvas.width;
+    var h = mosaicCanvas.height;
+    var destImgData = mosaicCtx.getImageData(0, 0, w, h);
+    var destData = destImgData.data;
+    for (var c = destData.length - 1; c > -1;) {
+        var pix = c / 4;
+        var x = pix % w;              // image position
+        var y = Math.floor(pix / w);
+        var i = Math.floor(x / iw); // tintVals position
+        var j = Math.floor(y / ih);
+        var tintVal = tintVals[j * divisions + i];
+        destData[c] = destData[c--] + tintVal.a;
+        destData[c] = destData[c--] + tintVal.b;
+        destData[c] = destData[c--] + tintVal.g;
+        destData[c] = destData[c--] + tintVal.r;
+    }
+    mosaicCtx.putImageData(destImgData, 0, 0);      // rewrite destination with tinted image data
     var revealCtx = revealCanvas.getContext("2d");
     revealCtx.putImageData(destImgData, 0, 0);     // write reveal canvas with image data
 }//endfunction
